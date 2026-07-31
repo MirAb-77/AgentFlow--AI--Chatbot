@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🤖 Personal Agentic AI Chatbot
+# 🤖AgentFlow AI
 
 ### A production-ready, multi-provider chat agent with a custom website UI
 
@@ -18,7 +18,7 @@
 
 ## 📖 Overview
 
-**Personal Agentic AI Chatbot** is a reusable agent framework with its own ChatGPT-style website — not a single-purpose bot. It gives you:
+**AgentFlow AI Chatbot** is a reusable agent framework with its own ChatGPT-style website — not a single-purpose bot. It gives you:
 
 - 🧠 **Any LLM** — swap between Groq, Google Gemini, and OpenRouter (which itself proxies dozens of models) per session
 - 🔍 **Optional live web search** — via Tavily, using the ReAct (reason → act → observe) pattern
