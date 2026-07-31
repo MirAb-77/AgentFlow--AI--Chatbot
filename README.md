@@ -2,15 +2,15 @@
 
 # 🤖 Personal Agentic AI Chatbot
 
-### A production-ready, multi-LLM chatbot agent powered by LangGraph, FastAPI & Streamlit
+### A production-ready, multi-provider chat agent with a custom website UI
 
 [![Python](https://img.shields.io/badge/Python-3.11-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
 [![LangGraph](https://img.shields.io/badge/LangGraph-ReAct%20Agent-1C3C3C?style=for-the-badge)](https://langchain-ai.github.io/langgraph/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-Backend-009688?style=for-the-badge&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
-[![Streamlit](https://img.shields.io/badge/Streamlit-Frontend-FF4B4B?style=for-the-badge&logo=streamlit&logoColor=white)](https://streamlit.io/)
+[![SQLite](https://img.shields.io/badge/SQLite-Persistence-003B57?style=for-the-badge&logo=sqlite&logoColor=white)](https://www.sqlite.org/)
 [![License](https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge)](#-license)
 
-**Groq · OpenAI · Meta Llama · Mistral · Tavily**
+**Groq · Gemini · OpenRouter · Tavily**
 
 </div>
 
@@ -18,41 +18,42 @@
 
 ## 📖 Overview
 
-**Personal Agentic AI Chatbot** is a reusable agent framework — not a single-purpose bot. It exposes one API endpoint that lets you plug in:
+**Personal Agentic AI Chatbot** is a reusable agent framework with its own ChatGPT-style website — not a single-purpose bot. It gives you:
 
-- 🧠 **Any LLM** — swap between Groq (Llama 3.3, Mixtral) and OpenAI (GPT-4o-mini) per request
+- 🧠 **Any LLM** — swap between Groq, Google Gemini, and OpenRouter (which itself proxies dozens of models) per session
 - 🔍 **Optional live web search** — via Tavily, using the ReAct (reason → act → observe) pattern
-- 🎭 **Any persona** — define the agent's behavior on the fly with a custom system prompt
-
-Think of it as infrastructure for spinning up different chatbot personalities on demand, with a clean UI on top.
+- 🎭 **Any persona** — define the agent's behavior per chat session with a custom system prompt
+- 💬 **Real conversation memory** — full chat history is sent to the agent every turn, so it remembers context
+- 🗂️ **Persistent chat sessions** — stored server-side in SQLite; a sidebar lets you switch between past conversations, just like ChatGPT
+- ⚡ **Live token streaming** — responses appear word-by-word via Server-Sent Events
 
 ---
 
 ## 🏗️ Technical Architecture
 
 ```
-┌─────────────────────────────────────────────┐
-│  Phase 3 — Streamlit UI                      │
-│  User Interaction                            │
-└───────────────────┬───────────────────────────┘
-                     │ HTTP POST
+┌───────────────────────────────────────────────┐
+│  Custom Website (HTML / CSS / JS)              │
+│  Sidebar sessions · Streaming chat · Markdown  │
+└───────────────────┬─────────────────────────────┘
+                     │ fetch() + SSE
 ┌────────────────────▼──────────────────────────┐
-│  Phase 2 — FastAPI Backend                     │
-│  Payload → Pydantic Validation → Response      │
+│  FastAPI Backend                               │
+│  Sessions API · /chat/stream · SQLite storage  │
 └────────────────────┬──────────────────────────┘
                      │
 ┌────────────────────▼──────────────────────────┐
-│  Phase 1 — LangGraph ReAct Agent               │
-│  LLM  ⇄  Tools (Tavily Search)                 │
+│  LangGraph ReAct Agent                         │
+│  LLM (Groq / Gemini / OpenRouter) ⇄ Tools      │
 └─────────────────────────────────────────────────┘
 ```
 
 | Layer | Tech |
 |---|---|
-| 🎨 Frontend | Streamlit |
-| ⚙️ Backend | FastAPI + Pydantic + Uvicorn |
-| 🧩 Agent Framework | LangGraph (`create_react_agent`) |
-| 🔌 LLM Providers | Groq, OpenAI |
+| 🎨 Frontend | Vanilla HTML/CSS/JS (served by FastAPI), marked.js, highlight.js |
+| ⚙️ Backend | FastAPI + Pydantic + Uvicorn + SQLite |
+| 🧩 Agent Framework | LangGraph (`create_react_agent`), streamed via `stream_mode="messages"` |
+| 🔌 LLM Providers | Groq, Google Gemini, OpenRouter |
 | 🌐 Search Tool | Tavily |
 | 🔗 Orchestration | LangChain |
 
@@ -60,11 +61,14 @@ Think of it as infrastructure for spinning up different chatbot personalities on
 
 ## ✨ Features
 
-- ✅ **Multi-provider LLM support** — Groq & OpenAI, selectable at runtime
-- ✅ **Web-search-augmented answers** — toggle real-time search on/off
-- ✅ **Custom system prompts** — reshape agent persona without code changes
-- ✅ **Clean REST API** — Swagger/OpenAPI docs out of the box via FastAPI
-- ✅ **Simple web UI** — no frontend framework overhead, just Streamlit
+- ✅ **Multi-provider LLM support** — Groq, Gemini, OpenRouter, selectable per session
+- ✅ **Multi-turn memory** — the agent sees the full conversation, not just the latest message
+- ✅ **Multiple chat sessions** — sidebar history, switch between conversations, delete old ones
+- ✅ **Streaming responses** — tokens appear live as the model generates them
+- ✅ **Markdown + syntax-highlighted code** — with one-click copy buttons on every code block
+- ✅ **Web-search-augmented answers** — toggle real-time search on/off per message
+- ✅ **Custom system prompts** — reshape agent persona per chat session
+- ✅ **One process to run** — FastAPI serves both the API and the website
 
 ---
 
@@ -72,11 +76,16 @@ Think of it as infrastructure for spinning up different chatbot personalities on
 
 ```
 .
-├── ai_agent.py       # Phase 1 — LLM setup + LangGraph ReAct agent
-├── backend.py        # Phase 2 — FastAPI service + Pydantic schema
-├── frontend.py        # Phase 3 — Streamlit UI
-├── requirements.txt   # pip dependencies
-├── Pipfile             # pipenv dependencies
+├── ai_agent.py         # LangGraph ReAct agent, multi-turn state, streaming
+├── backend.py          # FastAPI service: sessions, SQLite, SSE /chat/stream
+├── static/
+│   ├── index.html      # Website markup
+│   ├── style.css        # Design system (dark theme, provider color-coding)
+│   └── script.js        # Chat UI logic + SSE streaming client
+├── chat_history.db      # SQLite DB (auto-created on first run)
+├── requirements.txt
+├── Pipfile
+├── .env.example
 └── README.md
 ```
 
@@ -113,57 +122,47 @@ pip install -r requirements.txt
 ```
 </details>
 
-<details>
-<summary><b>🔧 Using Conda</b></summary>
-
-```bash
-conda create --name myenv python=3.11
-conda activate myenv
-pip install -r requirements.txt
-```
-</details>
-
 ### 3️⃣ Add your API keys
 
-Create a `.env` file in the project root:
+Copy `.env.example` to `.env` and fill in your real keys:
 
 ```env
 GROQ_API_KEY=your_groq_key
-OPENAI_API_KEY=your_openai_key
+GEMINI_API_KEY=your_gemini_key
 TAVILY_API_KEY=your_tavily_key
+OPENROUTER_API_KEY=your_openrouter_key
 ```
+
+> `OPENROUTER_API_KEY` is only required if you plan to use the OpenRouter provider.
 
 ### 4️⃣ Run the app
 
-> ⚠️ **Run the backend in a separate terminal before starting the frontend.**
-
 ```bash
-# Terminal 1 — start the backend
 python backend.py
-
-# Terminal 2 — start the frontend
-streamlit run frontend.py
 ```
 
-Visit `http://localhost:8501` for the chat UI, or `http://127.0.0.1:9999/docs` for the Swagger API docs.
+That's it — **one process**. Open **http://127.0.0.1:9999** in your browser for the chat website, or **http://127.0.0.1:9999/docs** for the Swagger API docs.
 
 ---
 
 ## 🎮 Usage
 
-1. Define your agent's persona in the **system prompt** box
-2. Pick a **provider** (Groq / OpenAI) and **model**
-3. Toggle **Allow Web Search** if you want real-time answers
-4. Type your query and hit **Ask Agent!**
+1. Click **+ New chat**, or just start typing — a session is created automatically
+2. Pick a **provider** and **model** from the top bar
+3. Toggle **Web search** if you want real-time answers
+4. Open **⚙ Agent settings** to set a custom system prompt for that session
+5. Type your message and hit **Enter** (Shift+Enter for a new line)
+6. Switch between past conversations any time via the sidebar
 
 ---
 
 ## 🛣️ Roadmap
 
-- [ ] Multi-turn conversation memory (LangGraph checkpointer)
-- [ ] Streaming responses
-- [ ] Additional tool integrations
-- [ ] Auth & rate limiting on the API
+- [ ] Rename sessions from the UI
+- [ ] File / image upload support
+- [ ] Auth & multi-user support
+- [ ] Rate limiting on the API
+- [ ] Export a conversation as Markdown/PDF
 
 ---
 
