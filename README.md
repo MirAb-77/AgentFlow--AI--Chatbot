@@ -1,236 +1,427 @@
-# Personal Agentic AI Chatbot
+<div align="center">
 
-A multi-provider, tool-using LangGraph agent exposed through a FastAPI backend and a custom, dependency-light frontend. Supports three interchangeable LLM providers, retrieval-augmented generation over user-uploaded documents, live web search, per-message reasoning trace introspection, rule-based model routing, and per-message usage/cost accounting — all persisted in SQLite behind a single-process deployment.
+<img src="docs/screenshots/landing-hero.png" width="100%" alt="Agent — landing page hero">
 
-[![Python](https://img.shields.io/badge/Python-3.11-3776AB?style=flat-square&logo=python&logoColor=white)](https://www.python.org/)
-[![LangGraph](https://img.shields.io/badge/LangGraph-1.2.10-1C3C3C?style=flat-square)](https://langchain-ai.github.io/langgraph/)
-[![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688?style=flat-square&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
-[![SQLite](https://img.shields.io/badge/SQLite-storage-003B57?style=flat-square&logo=sqlite&logoColor=white)](https://www.sqlite.org/)
-[![License](https://img.shields.io/badge/License-MIT-yellow?style=flat-square)](#license)
+<br><br>
+
+# 🤖⚡ Personal Agentic AI Chatbot
+
+### One interface. Three model engines. Full agent transparency.
+
+<p>
+<img src="https://img.shields.io/badge/Python-3.11-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python">
+<img src="https://img.shields.io/badge/LangGraph-1.2.10-1C3C3C?style=for-the-badge&logo=graphql&logoColor=white" alt="LangGraph">
+<img src="https://img.shields.io/badge/FastAPI-0.115-009688?style=for-the-badge&logo=fastapi&logoColor=white" alt="FastAPI">
+<img src="https://img.shields.io/badge/SQLite-storage-003B57?style=for-the-badge&logo=sqlite&logoColor=white" alt="SQLite">
+<img src="https://img.shields.io/badge/License-MIT-F2A65A?style=for-the-badge" alt="MIT License">
+</p>
+
+<p>
+<img src="https://img.shields.io/badge/🧠_Groq-F97316?style=flat-square&logoColor=white" alt="Groq">
+<img src="https://img.shields.io/badge/✨_Gemini-60A5FA?style=flat-square&logoColor=white" alt="Gemini">
+<img src="https://img.shields.io/badge/🔀_OpenRouter-C084FC?style=flat-square&logoColor=white" alt="OpenRouter">
+<img src="https://img.shields.io/badge/🌐_Tavily-5EEAD4?style=flat-square&logoColor=black" alt="Tavily">
+</p>
+
+**[🚀 Quick Start](#-quick-start)** · **[🏗️ Architecture](#️-architecture)** · **[✨ Features](#-features)** · **[🔌 API](#-api-reference)** · **[☁️ Deploy](#️-deployment)**
+
+</div>
 
 ---
 
-## 📷 Screenshots
+## 📖 What is this?
 
-**Landing page — hero + live provider-routing diagram**
-![Landing hero](docs/screenshots/landing-hero.png)
+A **multi-provider, tool-using LangGraph agent** wrapped in a FastAPI backend and a custom, framework-free frontend. It's not a ChatGPT clone — it's an agent-orchestration playground that happens to look like one:
 
-**Landing page — process breakdown and capability grid**
-![Landing features](docs/screenshots/landing-features.png)
+| | |
+|---|---|
+| 🧠 **3 interchangeable brains** | Groq · Gemini · OpenRouter, swappable mid-conversation |
+| 📎 **RAG on your own files** | Upload a PDF, the agent gains a `search_documents` tool |
+| 🧭 **Live Reasoning Trace** | Watch every tool call happen, in real time, not a fake spinner |
+| 🧭 **Smart Model Router** | A classifier auto-picks the cheapest capable model per message |
+| 📊 **Cost & latency analytics** | Every message logged, rolled into charts |
+| 💾 **Real persistence** | SQLite-backed sessions, survives restarts |
+| ⚡ **True token streaming** | Server-Sent Events, word-by-word |
 
-**Chat interface — empty state, provider/model selection, auto-route toggle**
-![Chat empty state](docs/screenshots/chat-empty.png)
+---
 
-**Chat interface — active conversation with per-message usage footer (`~654 tok · $0.0005 · 2056ms`)**
-![Chat conversation](docs/screenshots/chat-conversation.png)
+## 📸 Gallery
 
-**Analytics dashboard — token/cost/latency aggregation by provider and by day**
-![Analytics dashboard](docs/screenshots/analytics-dashboard.png)
+<table>
+<tr>
+<td width="50%">
+<img src="docs/screenshots/landing-features.png" width="100%">
+<p align="center"><sub>🏠 Landing — process breakdown & capability grid</sub></p>
+</td>
+<td width="50%">
+<img src="docs/screenshots/chat-empty.png" width="100%">
+<p align="center"><sub>💬 Chat — provider select, web search, auto-route</sub></p>
+</td>
+</tr>
+<tr>
+<td width="50%">
+<img src="docs/screenshots/chat-conversation.png" width="100%">
+<p align="center"><sub>⌨️ Active session — usage footer per message</sub></p>
+</td>
+<td width="50%">
+<img src="docs/screenshots/analytics-dashboard.png" width="100%">
+<p align="center"><sub>📊 Analytics — cost, tokens & latency, charted</sub></p>
+</td>
+</tr>
+</table>
 
 ---
 
 ## 🏗️ Architecture
 
-```
-┌──────────────────────────────────────────────────────────┐
-│ Frontend (static/, served by FastAPI StaticFiles)         │
-│ index.html (landing) · chat.html (app) · analytics.html   │
-│ script.js — fetch() + ReadableStream SSE consumer          │
-└───────────────────────────┬──────────────────────────────┘
-                             │ HTTP / SSE (text/event-stream)
-┌───────────────────────────▼──────────────────────────────┐
-│ backend.py — FastAPI application                          │
-│  ├─ Session CRUD (SQLite: sessions, messages)              │
-│  ├─ Document CRUD (SQLite: documents, doc_chunks)           │
-│  ├─ POST /api/chat/stream — SSE event generator             │
-│  ├─ GET  /api/analytics/summary — aggregate SQL queries      │
-│  └─ router.py — rule-based provider/model classifier         │
-└───────────────────────────┬──────────────────────────────┘
-                             │
-┌───────────────────────────▼──────────────────────────────┐
-│ ai_agent.py — LangGraph ReAct agent construction            │
-│  ├─ create_react_agent(model, tools, prompt=...)             │
-│  ├─ agent.stream(state, stream_mode="messages")                │
-│  │    → yields AIMessageChunk (deltas) + ToolMessage (results)│
-│  └─ tools: TavilySearchResults · StructuredTool(search_documents)│
-└───────────────────────────┬──────────────────────────────┘
-                             │
-        ┌────────────────────┼────────────────────┐
-        ▼                    ▼                    ▼
-   ChatGroq             ChatGoogleGenerativeAI   ChatOpenAI
-   (Groq API)            (Gemini API)             (OpenRouter,
-                                                    base_url override)
-```
+```mermaid
+flowchart TB
+    subgraph FE["🖥️ Frontend — static/ · served by FastAPI"]
+        L["🏠 index.html<br/>landing"]
+        C["💬 chat.html<br/>the app"]
+        A["📊 analytics.html<br/>dashboard"]
+    end
 
-### Request lifecycle (`POST /api/chat/stream`)
+    subgraph BE["⚙️ backend.py — FastAPI"]
+        SESS["🗂️ Session CRUD"]
+        DOC["📎 Document CRUD"]
+        STREAM["⚡ /api/chat/stream<br/>SSE generator"]
+        STATS["📈 /api/analytics/summary"]
+    end
 
-1. Client posts `{session_id, message, provider, model, system_prompt, allow_search, auto_route}`.
-2. If `auto_route=true`, `router.classify_and_route()` overrides `provider`/`model` via regex-based intent classification (see [Routing](#-routing-logic)); the decision is emitted as an SSE `route` event and prepended to the trace log.
-3. Full message history is pulled from SQLite (`messages` table, ordered by `id`) and converted to LangGraph state via `_history_to_state()`.
-4. If the session has rows in `documents`, a closure `search_documents(query: str) -> str` is bound as a `StructuredTool` and appended to the agent's tool list.
-5. `agent.stream(state, stream_mode="messages")` is iterated. Each yielded `(chunk, metadata)` tuple is inspected:
-   - `AIMessageChunk` with `.content` → forwarded as an SSE `delta` event, accumulated into `full_text`.
-   - `AIMessageChunk` with `.tool_call_chunks` → accumulated by tool-call `id` into a pending-calls dict (tool-call arguments arrive fragmented across multiple chunks and must be concatenated before JSON-parsing).
-   - `ToolMessage` → signals a tool call resolved; the corresponding pending call is matched, its `query` argument extracted, and `tool_call` + `tool_result` SSE events are emitted.
-6. On stream completion: latency is measured (`time.perf_counter()` delta), token counts are estimated (`len(text) // 4`), cost is computed against the static table in `router.py`, and the assistant message — content, trace (JSON), usage (JSON) — is written to SQLite in one transaction, alongside a row in `usage_events` for analytics aggregation.
-7. Final `usage` and `done` SSE events are emitted.
+    subgraph AG["🧠 ai_agent.py — LangGraph"]
+        ROUTE["🧭 router.py<br/>classify & route"]
+        REACT["🔁 create_react_agent()"]
+        TOOLS["🛠️ Tools:<br/>web search · doc search"]
+    end
 
----
+    subgraph LLM["🔌 Providers"]
+        GROQ["Groq"]
+        GEM["Gemini"]
+        OR["OpenRouter"]
+    end
 
-## 🧩 Core modules
+    DB[("🗄️ SQLite<br/>sessions · messages<br/>documents · usage")]
 
-| File | Responsibility |
-|---|---|
-| `ai_agent.py` | LLM factory (`_build_llm`), tool factory (`_build_tools`), agent factory (`_build_agent`), history→state conversion, streaming/non-streaming agent invocation, content-block normalization across providers (Gemini returns list-of-dict content blocks; Groq/OpenRouter return plain strings) |
-| `backend.py` | FastAPI app, SQLite schema + migrations, all REST/SSE endpoints, SSE event serialization, per-request document-search-tool binding |
-| `rag.py` | Text extraction (`pypdf` for PDF, UTF-8 decode otherwise), fixed-window chunking with overlap, Gemini embedding calls (`text-embedding-004`), cosine similarity ranking (`numpy`) |
-| `router.py` | Regex-based query classifier, `(provider, model) → (cost_in, cost_out)` pricing table, token estimation, cost estimation |
-| `static/script.js` | SSE client (manual `ReadableStream` parsing — `EventSource` isn't used because it can't send a POST body), session/document/trace state management, DOM rendering |
+    C -->|fetch + SSE| STREAM
+    L & A --> BE
+    STREAM --> ROUTE --> REACT --> TOOLS
+    REACT --> GROQ & GEM & OR
+    SESS & DOC & STREAM & STATS <--> DB
 
----
-
-## ⚙️ Backend internals
-
-### Database schema (SQLite, `chat_history.db`)
-
-```sql
-sessions(id TEXT PK, title, provider, model, system_prompt, created_at, updated_at)
-messages(id INTEGER PK, session_id, role, content, trace TEXT, usage TEXT, created_at)
-documents(id TEXT PK, session_id, filename, chunk_count, created_at)
-doc_chunks(id INTEGER PK, document_id, session_id, filename, chunk_text, embedding TEXT)
-usage_events(id INTEGER PK, session_id, provider, model,
-             input_tokens_est, output_tokens_est, cost_est, latency_ms, routed, created_at)
+    style FE fill:#12151F,stroke:#5EEAD4,color:#ECEFF5
+    style BE fill:#12151F,stroke:#5EEAD4,color:#ECEFF5
+    style AG fill:#12151F,stroke:#F2A65A,color:#ECEFF5
+    style LLM fill:#12151F,stroke:#C084FC,color:#ECEFF5
+    style DB fill:#171B26,stroke:#8891A4,color:#ECEFF5
 ```
 
-`trace` and `usage` are JSON-serialized columns — chosen over normalized tables because they're written once, read once per message render, and never queried/filtered independently of their parent message. `embedding` is a JSON-serialized `float` array (not a native vector type — SQLite has none by default), decoded and compared via `numpy` at query time rather than at the database layer, which is the deliberate cost/complexity tradeoff of skipping a dedicated vector store.
-
-Schema migrations are handled inline via `PRAGMA table_info()` checks + conditional `ALTER TABLE ADD COLUMN` on startup (`_column_exists()` in `backend.py`), rather than a migration framework — appropriate for a single-table-family SQLite app, not appropriate if this schema grows further.
-
-### Retrieval (`rag.py`)
-
-- Chunking: fixed 900-character windows, 150-character overlap, no semantic/sentence-boundary awareness (`chunk_text()`).
-- Embedding: `GoogleGenerativeAIEmbeddings(model="models/text-embedding-004")`, called regardless of the active chat provider — document embeddings always go through Gemini, independent of whether the conversation itself is on Groq/Gemini/OpenRouter.
-- Retrieval: brute-force cosine similarity over all chunks belonging to a session (`rank_chunks()`), top-*k*=4. No ANN index — acceptable at the scale of a single user's uploaded documents, not acceptable past a few thousand chunks per session.
-
-### Routing logic (`router.py`)
-
-Classification is three ordered regex/length checks, first match wins:
-
-1. `CODE_PATTERN` — triple backticks, `function`/`class`/`def`/`error`/`debug`/`exception`/`bug`/`compile`/`stack trace`/`refactor` → routes to `Groq / llama-3.3-70b-versatile`.
-2. `REASONING_PATTERN` (`why`/`explain`/`analyz*`/`compare`/`pros and cons`/`trade-?offs?`/`step by step`/`summar*`) **or** word count > 60 → routes to `Gemini / gemini-2.5-flash`.
-3. Word count ≤ 12 → `Groq / llama-3.1-8b-instant`.
-4. Fallback → `OpenRouter / qwen/qwen3.5-9b`.
-
-This is intentionally a rule-based classifier, not a learned or LLM-based one — zero added latency, zero added cost, fully deterministic and auditable, at the cost of being a coarser signal than an actual complexity-scoring model would provide.
-
-### Cost estimation
-
-Token counts are a `len(text) // 4` heuristic — no tokenizer dependency (`tiktoken`, provider-specific tokenizers) is loaded. This is accurate to within the usual ±15–20% margin for English prose and meaningfully wrong for code-heavy or non-English text. The `COST_TABLE` in `router.py` is a static, manually-maintained `(provider, model) → (usd_per_1M_input, usd_per_1M_output)` dict sourced from provider pricing pages at time of writing — it does not call any pricing API and will drift as providers change rates.
-
 ---
 
-## 🖥️ Frontend internals
+## 🔁 Request Workflow
 
-No build step, no framework, no bundler. Three static HTML entry points share `style.css` (design tokens: CSS custom properties for color/spacing/typography) and load page-specific CSS/JS:
+What actually happens when you hit send — end to end:
 
-- `index.html` + `landing.css` + `landing.js` — marketing/explainer page, `IntersectionObserver`-driven scroll reveals, CSS-animated SVG connector lines in the hero diagram.
-- `chat.html` + `script.js` — the application. State lives in a single in-memory `state` object (no framework reactivity); DOM updates are direct `innerHTML`/`querySelector` mutations.
-- `analytics.html` + `analytics.css` + `analytics.js` — fetches `/api/analytics/summary` once, renders stat cards and two hand-rolled charts (`div`-based horizontal bars for cost-by-provider, flexbox column bars for daily activity) with no charting library.
+```mermaid
+sequenceDiagram
+    autonumber
+    participant U as 🙋 User
+    participant FE as 💬 Frontend
+    participant BE as ⚙️ Backend
+    participant R as 🧭 Router
+    participant AG as 🧠 LangGraph Agent
+    participant T as 🛠️ Tools
+    participant DB as 🗄️ SQLite
 
-### SSE consumption
+    U->>FE: types message, hits Enter
+    FE->>BE: POST /api/chat/stream (SSE)
+    BE->>DB: save user message
 
-`EventSource` is not used, because the request requires a JSON POST body (`EventSource` only supports GET). Instead, `fetch()` returns a `ReadableStream`, manually decoded and split on `\n\n` frame boundaries:
+    alt 🧭 Auto-route enabled
+        BE->>R: classify_and_route(message)
+        R-->>BE: {provider, model, reason}
+        BE-->>FE: SSE event: route
+    end
 
-```js
-const reader = res.body.getReader();
-const decoder = new TextDecoder();
-let buffer = "";
-while (true) {
-  const { value, done } = await reader.read();
-  if (done) break;
-  buffer += decoder.decode(value, { stream: true });
-  const chunks = buffer.split("\n\n");
-  buffer = chunks.pop();          // last (possibly incomplete) frame stays buffered
-  for (const chunk of chunks) { /* parse `data: {...}` */ }
-}
+    BE->>DB: load full conversation history
+    BE->>AG: stream(state, mode="messages")
+
+    loop while generating
+        AG->>T: 🔍 tool call (web / docs)?
+        T-->>AG: tool result
+        AG-->>BE: SSE: tool_call / tool_result
+        BE-->>FE: forward live
+        AG-->>BE: token delta
+        BE-->>FE: SSE: delta
+        FE-->>U: renders word-by-word ⚡
+    end
+
+    BE->>BE: compute tokens · cost · latency
+    BE->>DB: persist message + trace + usage
+    BE-->>FE: SSE: usage, done
+    FE-->>U: 📊 usage footer appears
 ```
 
-### Markdown/code rendering
+---
 
-`marked.js` parses response text to HTML on every delta (re-parsed from scratch per token batch, not incrementally — acceptable at typical response lengths, would need diffing at much larger outputs). `highlight.js` runs on each `<pre><code>` block after parse; a `MutationObserver`-free approach is used — code blocks are re-scanned and copy buttons re-attached via `enhanceCodeBlocks()` after every markdown re-render.
+## ✨ Features
+
+<table>
+<tr>
+<td width="33%" valign="top">
+
+### 🧭 Live Reasoning Trace
+Every tool call — web search or document search — streams in as a structured event (`tool_call` → `tool_result`), not a fake "thinking…" spinner. Persisted per-message so it's still there when you reopen a session.
+
+</td>
+<td width="33%" valign="top">
+
+### 📎 RAG on Your Files
+Upload a PDF or text file → chunked → embedded (Gemini `text-embedding-004`) → stored in SQLite. No external vector DB. The agent gains a `search_documents` tool it can *choose* to call.
+
+</td>
+<td width="33%" valign="top">
+
+### 🧠 Smart Model Router
+Flip on **Auto-route** and a regex-based classifier reads each message — code markers, reasoning cues, length — and picks Groq / Gemini / OpenRouter accordingly. The *why* shows up in the trace.
+
+</td>
+</tr>
+<tr>
+<td width="33%" valign="top">
+
+### 📊 Usage Analytics
+Every message logs estimated tokens, cost (against real published rates), and latency. Rolled up into hand-rolled SVG/CSS charts — no charting library dependency.
+
+</td>
+<td width="33%" valign="top">
+
+### 💬 Real Memory
+Full chat history — not just the last message — is sent to the agent every turn via `_history_to_state()`. It remembers what you said three messages ago.
+
+</td>
+<td width="33%" valign="top">
+
+### ⚡ Token Streaming
+`agent.stream(state, stream_mode="messages")` → Server-Sent Events → a manually-parsed `ReadableStream` on the client. No polling, no spinners.
+
+</td>
+</tr>
+</table>
 
 ---
 
-## 🔌 API reference
+## 🧩 Core Modules
 
-| Method | Path | Purpose |
-|---|---|---|
-| `GET` | `/api/models` | Returns `{provider: [model, ...]}` map |
-| `GET` | `/api/sessions` | List sessions, ordered by `updated_at DESC` |
-| `POST` | `/api/sessions` | Create session `{provider, model, system_prompt}` |
-| `GET` | `/api/sessions/{id}` | Session detail + full message history + documents |
-| `PATCH` | `/api/sessions/{id}` | Rename (`{title}`) |
-| `DELETE` | `/api/sessions/{id}` | Cascades to messages, documents, doc_chunks |
-| `POST` | `/api/sessions/{id}/documents` | Multipart file upload → chunk → embed → store |
-| `GET` | `/api/sessions/{id}/documents` | List documents for session |
-| `DELETE` | `/api/sessions/{id}/documents/{doc_id}` | Remove document + its chunks |
-| `POST` | `/api/chat` | Non-streaming chat (single-turn, no persistence — Swagger/testing use) |
-| `POST` | `/api/chat/stream` | SSE streaming chat, full pipeline described above |
-| `GET` | `/api/analytics/summary` | Aggregate totals + provider/model breakdown + 30-day daily series |
+```
+📦 personal-agentic-chatbot
+├── 🧠 ai_agent.py         LLM factory · tool factory · agent factory · streaming
+├── ⚙️ backend.py          FastAPI · SQLite schema · SSE endpoints
+├── 📎 rag.py              Chunking · embeddings · cosine-similarity retrieval
+├── 🧭 router.py           Query classifier · cost table
+├── 🎨 static/
+│   ├── 🏠 index.html      Landing page
+│   ├── 💬 chat.html       The application
+│   ├── 📊 analytics.html  Usage dashboard
+│   ├── 🎨 style.css       Shared design tokens
+│   ├── 🎨 landing.css     Landing-specific styles
+│   ├── 🎨 analytics.css   Dashboard-specific styles
+│   ├── ⚡ script.js       SSE client · trace rendering · doc upload
+│   ├── ✨ landing.js      Scroll-reveal animation
+│   └── 📈 analytics.js    Chart rendering
+├── 🐳 Dockerfile
+├── 📄 requirements.txt / Pipfile
+└── 📘 README.md
+```
 
-SSE event types emitted by `/api/chat/stream`: `title`, `route`, `delta`, `tool_call`, `tool_result`, `usage`, `done`, `error`.
+<details>
+<summary><b>🔍 Click to expand — what each module actually does under the hood</b></summary>
+
+<br>
+
+**`ai_agent.py`**
+- `_build_llm()` — instantiates `ChatGroq` / `ChatGoogleGenerativeAI` / `ChatOpenAI` (OpenRouter via `base_url` override)
+- `_build_tools()` — conditionally attaches `TavilySearchResults` and/or a `StructuredTool` wrapping the RAG search closure
+- `_build_agent()` — calls `create_react_agent(model, tools, prompt=...)`, with a `try/except` fallback to the older `state_modifier=` kwarg for version safety
+- `stream_response_from_ai_agent()` — the streaming generator: accumulates fragmented `tool_call_chunks` by ID, matches them against resolved `ToolMessage`s, and yields structured `delta` / `tool_call` / `tool_result` events
+
+**`rag.py`**
+- `extract_text()` — `pypdf` for PDFs, UTF-8 decode otherwise
+- `chunk_text()` — fixed 900-char windows, 150-char overlap
+- `embed_documents()` / `embed_query()` — Gemini `text-embedding-004`, always Gemini regardless of active chat provider
+- `rank_chunks()` — brute-force `numpy` cosine similarity, top-*k*=4
+
+**`router.py`**
+- `classify_and_route()` — ordered regex checks: code markers → coding model, reasoning cues/length → reasoning model, short → fast model, else → balanced fallback
+- `COST_TABLE` — static `(provider, model) → (usd/1M in, usd/1M out)` dict
+- `estimate_tokens()` — `len(text) // 4` heuristic, no tokenizer dependency
+
+**`backend.py`**
+- SQLite schema with inline migrations (`PRAGMA table_info()` + conditional `ALTER TABLE`)
+- `/api/chat/stream` — the full pipeline: route → load history → stream agent → persist trace/usage → emit final SSE events
+- `/api/analytics/summary` — aggregate SQL (`GROUP BY provider, model` / `GROUP BY date(...)`)
+
+</details>
 
 ---
 
-## 🚀 Setup
+## 🗄️ Data Model
+
+```mermaid
+erDiagram
+    SESSIONS ||--o{ MESSAGES : contains
+    SESSIONS ||--o{ DOCUMENTS : has
+    SESSIONS ||--o{ USAGE_EVENTS : logs
+    DOCUMENTS ||--o{ DOC_CHUNKS : split_into
+
+    SESSIONS {
+        text id PK
+        text title
+        text provider
+        text model
+        text system_prompt
+    }
+    MESSAGES {
+        int id PK
+        text session_id FK
+        text role
+        text content
+        text trace "JSON"
+        text usage "JSON"
+    }
+    DOCUMENTS {
+        text id PK
+        text session_id FK
+        text filename
+        int chunk_count
+    }
+    DOC_CHUNKS {
+        int id PK
+        text document_id FK
+        text chunk_text
+        text embedding "JSON float array"
+    }
+    USAGE_EVENTS {
+        int id PK
+        text session_id FK
+        text provider
+        text model
+        real cost_est
+        int latency_ms
+    }
+```
+
+---
+
+## 🔌 API Reference
+
+| | Method | Path | Purpose |
+|---|---|---|---|
+| 🧠 | `GET` | `/api/models` | `{provider: [model, ...]}` map |
+| 🗂️ | `GET` | `/api/sessions` | List sessions, newest first |
+| 🗂️ | `POST` | `/api/sessions` | Create session |
+| 🗂️ | `GET` | `/api/sessions/{id}` | Full history + documents |
+| 🗂️ | `PATCH` | `/api/sessions/{id}` | Rename |
+| 🗂️ | `DELETE` | `/api/sessions/{id}` | Cascading delete |
+| 📎 | `POST` | `/api/sessions/{id}/documents` | Upload → chunk → embed |
+| 📎 | `GET` | `/api/sessions/{id}/documents` | List documents |
+| 📎 | `DELETE` | `/api/sessions/{id}/documents/{doc_id}` | Remove document |
+| 💬 | `POST` | `/api/chat` | Non-streaming (Swagger/testing) |
+| ⚡ | `POST` | `/api/chat/stream` | **SSE streaming chat** — the main event |
+| 📊 | `GET` | `/api/analytics/summary` | Aggregate cost/token/latency stats |
+
+**SSE event types:** `title` · `route` · `delta` · `tool_call` · `tool_result` · `usage` · `done` · `error`
+
+---
+
+## 🚀 Quick Start
 
 ```bash
+# 1️⃣ Clone
 git clone https://github.com/MirAb-77/<repo-name>.git
 cd <repo-name>
+
+# 2️⃣ Environment
 python -m venv venv && source venv/bin/activate   # Windows: venv\Scripts\activate
 pip install -r requirements.txt
-cp .env.example .env    # fill in GROQ_API_KEY, GEMINI_API_KEY, TAVILY_API_KEY, OPENROUTER_API_KEY
+
+# 3️⃣ Keys
+cp .env.example .env
+# fill in: GROQ_API_KEY · GEMINI_API_KEY · TAVILY_API_KEY · OPENROUTER_API_KEY
+
+# 4️⃣ Run — one process, everything included
 python backend.py
 ```
 
-Single process, single port (`9999`): serves the REST/SSE API, the landing page, the chat app, and the analytics dashboard. `GEMINI_API_KEY` is required even for Groq/OpenRouter-only conversations, since document embedding always calls the Gemini API independently of the active chat provider.
+🌐 `http://127.0.0.1:9999` → landing page
+💬 `http://127.0.0.1:9999/chat.html` → the app
+📊 `http://127.0.0.1:9999/analytics.html` → dashboard
+📘 `http://127.0.0.1:9999/docs` → Swagger
 
-### Dependency pinning note
+> ⚠️ **Note:** `GEMINI_API_KEY` is required even for Groq/OpenRouter-only chats — document embedding always calls Gemini independently of the active chat model.
 
-`langgraph` is pinned exactly (`==1.2.10` in both `requirements.txt` and `Pipfile`) rather than left open — the `create_react_agent()` keyword interface changed between minor versions (`state_modifier` → `prompt`), and an unpinned install silently breaks the agent construction call. `ai_agent.py`'s `_build_agent()` additionally wraps the call in a `try/except TypeError` fallback between the two interfaces as defense in depth.
+> 📌 **Pinned dependency:** `langgraph==1.2.10` is pinned exactly in both `requirements.txt` and `Pipfile` — `create_react_agent()`'s keyword interface changed between versions (`state_modifier` → `prompt`), and an unpinned install silently breaks agent construction.
 
 ---
 
 ## ☁️ Deployment
 
-Any host running a persistent process works; avoid pure serverless/edge runtimes since SQLite requires a writable, persistent filesystem path (`DB_PATH` env var, defaults to `./chat_history.db`).
+<table>
+<tr>
+<td width="50%" valign="top">
 
+### 🐳 Docker
 ```bash
-# Docker
 docker build -t agent-chatbot .
-docker run -d -p 9999:9999 --env-file .env -v agent_data:/app/data --name agent-chatbot agent-chatbot
+docker run -d -p 9999:9999 \
+  --env-file .env \
+  -v agent_data:/app/data \
+  --name agent-chatbot \
+  agent-chatbot
 ```
+The volume is what keeps `chat_history.db` alive across restarts.
 
-Render/Railway: connect the repo, set the four provider env vars, attach a persistent volume at `/app/data`, set `DB_PATH=/app/data/chat_history.db`. Without the volume, ephemeral-filesystem platforms wipe chat history on every restart/redeploy.
+</td>
+<td width="50%" valign="top">
 
-**Known gaps before public deployment:** `CORS` is `allow_origins=["*"]`; there is no authentication on any endpoint; there is no rate limiting. Fine for local/personal use, not fine for an unauthenticated public URL.
+### ☁️ Render / Railway
+1. Connect the repo
+2. Build: `pip install -r requirements.txt`
+3. Start: `uvicorn backend:app --host 0.0.0.0 --port $PORT`
+4. Set the 4 provider env vars
+5. Attach a **persistent volume** at `/app/data`
+6. Set `DB_PATH=/app/data/chat_history.db`
 
----
+</td>
+</tr>
+</table>
 
-## 🧭 Design tradeoffs (explicit)
-
-- **No vector database.** Embeddings are stored as JSON text in SQLite and compared with brute-force `numpy` cosine similarity. Correct choice at single-user, single-session scale; wrong choice past a few thousand chunks or multi-tenant concurrent load.
-- **No token-accurate cost accounting.** Character-count heuristic, not a real tokenizer. Directionally useful, not billing-accurate — stated explicitly in the analytics UI itself.
-- **Rule-based router, not a learned one.** Deterministic and free, but a fixed set of regex patterns will misclassify anything outside the patterns it was written to catch.
-- **JSON columns instead of normalized trace/usage tables.** Simpler queries, no joins needed for the one access pattern that exists (render-by-message-id); would need revisiting if trace data needed independent querying/filtering.
-- **No conversation-level model pinning under auto-route.** Each auto-routed message is classified independently; a session can bounce between providers turn to turn, which is intentional (cost/latency optimized per-message) but means model identity isn't stable within one conversation the way manual selection guarantees.
-
----
-
-## 📄 License
-
-MIT.
+> 🔓 **Before going public:** CORS is wide open (`allow_origins=["*"]`) and there's **no authentication or rate limiting** on any endpoint. Fine for personal/portfolio use — lock it down before sharing a public link.
 
 ---
 
-Built by [Abdullah Imran](https://github.com/MirAb-77)
+## 🧭 Design Tradeoffs — stated plainly
+
+| Decision | Why it's fine here | Where it breaks |
+|---|---|---|
+| 🗄️ No vector database | Cosine similarity in `numpy` over SQLite-stored JSON embeddings | Past a few thousand chunks / multi-tenant load |
+| 🔢 Heuristic token counts | `len(text) // 4`, zero tokenizer dependency | Not billing-accurate — directional only |
+| 🧭 Rule-based router | Zero latency, zero cost, fully auditable | Misses anything outside its regex patterns |
+| 📦 JSON trace/usage columns | Simple — the only access pattern is render-by-message | Would need normalizing if trace needed independent queries |
+| 🎲 Per-message auto-routing | Cost/latency-optimized every turn | Model identity isn't stable within one conversation |
+
+---
+
+<div align="center">
+
+### 📄 License
+
+MIT — do what you want with it.
+
+<br>
+
+**Built by [Abdullah Imran](https://github.com/MirAb-77)**
+
+⭐ if this was useful for your own portfolio
+
+</div>
