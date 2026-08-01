@@ -1,283 +1,236 @@
-<div align="center">
+# Personal Agentic AI Chatbot
 
-# 🤖 Personal Agentic AI Chatbot
+A multi-provider, tool-using LangGraph agent exposed through a FastAPI backend and a custom, dependency-light frontend. Supports three interchangeable LLM providers, retrieval-augmented generation over user-uploaded documents, live web search, per-message reasoning trace introspection, rule-based model routing, and per-message usage/cost accounting — all persisted in SQLite behind a single-process deployment.
 
-### A production-ready, multi-provider chat agent with a custom website UI
-
-[![Python](https://img.shields.io/badge/Python-3.11-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
-[![LangGraph](https://img.shields.io/badge/LangGraph-ReAct%20Agent-1C3C3C?style=for-the-badge)](https://langchain-ai.github.io/langgraph/)
-[![FastAPI](https://img.shields.io/badge/FastAPI-Backend-009688?style=for-the-badge&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
-[![SQLite](https://img.shields.io/badge/SQLite-Persistence-003B57?style=for-the-badge&logo=sqlite&logoColor=white)](https://www.sqlite.org/)
-[![License](https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge)](#-license)
-
-**Groq · Gemini · OpenRouter · Tavily**
-
-</div>
+[![Python](https://img.shields.io/badge/Python-3.11-3776AB?style=flat-square&logo=python&logoColor=white)](https://www.python.org/)
+[![LangGraph](https://img.shields.io/badge/LangGraph-1.2.10-1C3C3C?style=flat-square)](https://langchain-ai.github.io/langgraph/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688?style=flat-square&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
+[![SQLite](https://img.shields.io/badge/SQLite-storage-003B57?style=flat-square&logo=sqlite&logoColor=white)](https://www.sqlite.org/)
+[![License](https://img.shields.io/badge/License-MIT-yellow?style=flat-square)](#license)
 
 ---
 
-## 📖 Overview
+## 📷 Screenshots
 
-**Personal Agentic AI Chatbot** is a reusable agent framework with its own ChatGPT-style website — not a single-purpose bot. It gives you:
+**Landing page — hero + live provider-routing diagram**
+![Landing hero](docs/screenshots/landing-hero.png)
 
-- 🧠 **Any LLM** — swap between Groq, Google Gemini, and OpenRouter (which itself proxies dozens of models) per session
-- 🔍 **Optional live web search** — via Tavily, using the ReAct (reason → act → observe) pattern
-- 📎 **Chat with your own documents (RAG)** — upload a PDF/text file and the agent retrieves relevant passages via embeddings + cosine similarity before answering
-- 🧭 **Live Reasoning Trace** — watch the agent's actual thought process in real time: which tool it called, what it searched for, what came back — not just the final answer
-- 🧠 **Smart Model Router** — flip on Auto-route and a classifier picks the best provider/model per message, cost/latency-aware, with its reasoning shown in the trace
-- 📊 **Usage analytics dashboard** — estimated tokens, cost, and latency tracked per message and rolled up into charts
-- 🎭 **Any persona** — define the agent's behavior per chat session with a custom system prompt
-- 💬 **Real conversation memory** — full chat history is sent to the agent every turn, so it remembers context
-- 🗂️ **Persistent chat sessions** — stored server-side in SQLite; a sidebar lets you switch between past conversations, just like ChatGPT
-- ⚡ **Live token streaming** — responses appear word-by-word via Server-Sent Events
+**Landing page — process breakdown and capability grid**
+![Landing features](docs/screenshots/landing-features.png)
 
----
+**Chat interface — empty state, provider/model selection, auto-route toggle**
+![Chat empty state](docs/screenshots/chat-empty.png)
 
-## 🌟 What makes this different
+**Chat interface — active conversation with per-message usage footer (`~654 tok · $0.0005 · 2056ms`)**
+![Chat conversation](docs/screenshots/chat-conversation.png)
 
-Most portfolio chatbots are an input box wired to an LLM. This one exposes and extends the *agentic* part:
-
-### 🧭 Live Reasoning Trace
-Every time the agent decides to use a tool — web search or your uploaded documents — you see it happen, live, in an expandable timeline above the answer: the exact query it ran, and the raw result that came back, before the model turns that into prose. This isn't a fake "thinking…" spinner; it's the actual LangGraph tool-calling stream (`stream_mode="messages"`) parsed into structured events (`tool_call` → `tool_result` → `delta`) and persisted per-message, so the trace is still there when you reopen a session later.
-
-### 📎 Retrieval-Augmented Generation (RAG) on your own files
-Upload a PDF or text file to any conversation and the agent gains a `search_documents` tool: your file is chunked, embedded (Google's `text-embedding-004`), and stored — no external vector database required, just SQLite + cosine similarity in `rag.py`. Ask a question that touches the file's content, and you'll watch the Reasoning Trace show the agent choosing to search your documents instead of (or alongside) the web. This is the single most common real-world GenAI use case, implemented end-to-end.
-
-### 🧠 Smart Model Router
-Flip on **Auto-route** and the app stops asking you to pick a model — a rule-based classifier in `router.py` reads each message (code markers, reasoning cues, length) and picks the provider/model itself: fast/cheap Groq for a quick question, Gemini for multi-step reasoning, a balanced OpenRouter model as the general fallback. The decision — and *why* it was made — shows up as the first entry in the Reasoning Trace, so routing isn't a black box either. This mirrors the cost/latency/quality tradeoff logic real multi-model gateways run in production.
-
-### 📊 Usage Analytics Dashboard
-Every message is logged with estimated input/output tokens, estimated cost (against each provider's real published per-model rates), and latency. The `/analytics.html` dashboard rolls this up into cost-by-provider and daily-activity charts, hand-rolled in SVG/CSS — no charting library dependency. It's the FinOps instinct real production LLM apps need: knowing what a feature costs before the bill arrives.
+**Analytics dashboard — token/cost/latency aggregation by provider and by day**
+![Analytics dashboard](docs/screenshots/analytics-dashboard.png)
 
 ---
 
-## 🏗️ Technical Architecture
+## 🏗️ Architecture
 
 ```
-┌───────────────────────────────────────────────┐
-│  Custom Website (HTML / CSS / JS)              │
-│  Landing · Sidebar sessions · Chat · Analytics │
-└───────────────────┬─────────────────────────────┘
-                     │ fetch() + SSE
-┌────────────────────▼──────────────────────────┐
-│  FastAPI Backend                               │
-│  Sessions · Documents · Router · Analytics API │
-│  /chat/stream · SQLite storage                 │
-└────────────────────┬──────────────────────────┘
-                     │
-┌────────────────────▼──────────────────────────┐
-│  LangGraph ReAct Agent                         │
-│  LLM (Groq / Gemini / OpenRouter) ⇄ Tools      │
-│  Web search (Tavily) · Document search (RAG)   │
-└─────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────┐
+│ Frontend (static/, served by FastAPI StaticFiles)         │
+│ index.html (landing) · chat.html (app) · analytics.html   │
+│ script.js — fetch() + ReadableStream SSE consumer          │
+└───────────────────────────┬──────────────────────────────┘
+                             │ HTTP / SSE (text/event-stream)
+┌───────────────────────────▼──────────────────────────────┐
+│ backend.py — FastAPI application                          │
+│  ├─ Session CRUD (SQLite: sessions, messages)              │
+│  ├─ Document CRUD (SQLite: documents, doc_chunks)           │
+│  ├─ POST /api/chat/stream — SSE event generator             │
+│  ├─ GET  /api/analytics/summary — aggregate SQL queries      │
+│  └─ router.py — rule-based provider/model classifier         │
+└───────────────────────────┬──────────────────────────────┘
+                             │
+┌───────────────────────────▼──────────────────────────────┐
+│ ai_agent.py — LangGraph ReAct agent construction            │
+│  ├─ create_react_agent(model, tools, prompt=...)             │
+│  ├─ agent.stream(state, stream_mode="messages")                │
+│  │    → yields AIMessageChunk (deltas) + ToolMessage (results)│
+│  └─ tools: TavilySearchResults · StructuredTool(search_documents)│
+└───────────────────────────┬──────────────────────────────┘
+                             │
+        ┌────────────────────┼────────────────────┐
+        ▼                    ▼                    ▼
+   ChatGroq             ChatGoogleGenerativeAI   ChatOpenAI
+   (Groq API)            (Gemini API)             (OpenRouter,
+                                                    base_url override)
 ```
 
-| Layer | Tech |
+### Request lifecycle (`POST /api/chat/stream`)
+
+1. Client posts `{session_id, message, provider, model, system_prompt, allow_search, auto_route}`.
+2. If `auto_route=true`, `router.classify_and_route()` overrides `provider`/`model` via regex-based intent classification (see [Routing](#-routing-logic)); the decision is emitted as an SSE `route` event and prepended to the trace log.
+3. Full message history is pulled from SQLite (`messages` table, ordered by `id`) and converted to LangGraph state via `_history_to_state()`.
+4. If the session has rows in `documents`, a closure `search_documents(query: str) -> str` is bound as a `StructuredTool` and appended to the agent's tool list.
+5. `agent.stream(state, stream_mode="messages")` is iterated. Each yielded `(chunk, metadata)` tuple is inspected:
+   - `AIMessageChunk` with `.content` → forwarded as an SSE `delta` event, accumulated into `full_text`.
+   - `AIMessageChunk` with `.tool_call_chunks` → accumulated by tool-call `id` into a pending-calls dict (tool-call arguments arrive fragmented across multiple chunks and must be concatenated before JSON-parsing).
+   - `ToolMessage` → signals a tool call resolved; the corresponding pending call is matched, its `query` argument extracted, and `tool_call` + `tool_result` SSE events are emitted.
+6. On stream completion: latency is measured (`time.perf_counter()` delta), token counts are estimated (`len(text) // 4`), cost is computed against the static table in `router.py`, and the assistant message — content, trace (JSON), usage (JSON) — is written to SQLite in one transaction, alongside a row in `usage_events` for analytics aggregation.
+7. Final `usage` and `done` SSE events are emitted.
+
+---
+
+## 🧩 Core modules
+
+| File | Responsibility |
 |---|---|
-| 🎨 Frontend | Vanilla HTML/CSS/JS (served by FastAPI), marked.js, highlight.js |
-| ⚙️ Backend | FastAPI + Pydantic + Uvicorn + SQLite |
-| 🧩 Agent Framework | LangGraph (`create_react_agent`), streamed via `stream_mode="messages"` |
-| 🔌 LLM Providers | Groq, Google Gemini, OpenRouter |
-| 🌐 Tools | Tavily (web search), custom RAG tool (`search_documents`) |
-| 🧭 Routing | Rule-based classifier in `router.py` |
-| 🔗 Orchestration | LangChain |
+| `ai_agent.py` | LLM factory (`_build_llm`), tool factory (`_build_tools`), agent factory (`_build_agent`), history→state conversion, streaming/non-streaming agent invocation, content-block normalization across providers (Gemini returns list-of-dict content blocks; Groq/OpenRouter return plain strings) |
+| `backend.py` | FastAPI app, SQLite schema + migrations, all REST/SSE endpoints, SSE event serialization, per-request document-search-tool binding |
+| `rag.py` | Text extraction (`pypdf` for PDF, UTF-8 decode otherwise), fixed-window chunking with overlap, Gemini embedding calls (`text-embedding-004`), cosine similarity ranking (`numpy`) |
+| `router.py` | Regex-based query classifier, `(provider, model) → (cost_in, cost_out)` pricing table, token estimation, cost estimation |
+| `static/script.js` | SSE client (manual `ReadableStream` parsing — `EventSource` isn't used because it can't send a POST body), session/document/trace state management, DOM rendering |
 
 ---
 
-## ✨ Features
+## ⚙️ Backend internals
 
-- ✅ **Multi-provider LLM support** — Groq, Gemini, OpenRouter, selectable per session
-- ✅ **Multi-turn memory** — the agent sees the full conversation, not just the latest message
-- ✅ **Multiple chat sessions** — sidebar history, switch between conversations, delete old ones
-- ✅ **Streaming responses** — tokens appear live as the model generates them
-- ✅ **Live Reasoning Trace** — expandable, per-message timeline of every tool call and result
-- ✅ **RAG on uploaded documents** — chat with your own PDFs/text files, chunked + embedded + retrieved
-- ✅ **Smart Model Router** — optional auto-routing picks the best provider/model per query
-- ✅ **Usage analytics dashboard** — token, cost, and latency tracking with charts
-- ✅ **Markdown + syntax-highlighted code** — with one-click copy buttons on every code block
-- ✅ **Web-search-augmented answers** — toggle real-time search on/off per message
-- ✅ **Custom system prompts** — reshape agent persona per chat session
-- ✅ **One process to run** — FastAPI serves the API, the landing page, and the chat app
+### Database schema (SQLite, `chat_history.db`)
 
----
-
-## 📁 Project Structure
-
-```
-.
-├── ai_agent.py         # LangGraph ReAct agent, multi-turn state, streaming, reasoning trace
-├── backend.py          # FastAPI service: sessions, documents, routing, analytics, SSE
-├── rag.py               # Chunking, embeddings, cosine-similarity retrieval (RAG)
-├── router.py             # Smart Model Router: query classification + cost table
-├── static/
-│   ├── index.html      # Landing / home page
-│   ├── chat.html        # The chat app itself
-│   ├── analytics.html    # Usage analytics dashboard
-│   ├── style.css        # Shared design system (dark theme, provider color-coding)
-│   ├── landing.css      # Landing-page-specific styles
-│   ├── analytics.css     # Analytics dashboard styles
-│   ├── script.js        # Chat UI logic, SSE streaming, reasoning trace, document upload
-│   ├── landing.js       # Scroll-reveal animation for the landing page
-│   └── analytics.js      # Fetches and renders the analytics dashboard
-├── chat_history.db      # SQLite DB (auto-created on first run)
-├── Dockerfile
-├── .dockerignore
-├── requirements.txt
-├── Pipfile
-├── .env.example
-└── README.md
+```sql
+sessions(id TEXT PK, title, provider, model, system_prompt, created_at, updated_at)
+messages(id INTEGER PK, session_id, role, content, trace TEXT, usage TEXT, created_at)
+documents(id TEXT PK, session_id, filename, chunk_count, created_at)
+doc_chunks(id INTEGER PK, document_id, session_id, filename, chunk_text, embedding TEXT)
+usage_events(id INTEGER PK, session_id, provider, model,
+             input_tokens_est, output_tokens_est, cost_est, latency_ms, routed, created_at)
 ```
 
+`trace` and `usage` are JSON-serialized columns — chosen over normalized tables because they're written once, read once per message render, and never queried/filtered independently of their parent message. `embedding` is a JSON-serialized `float` array (not a native vector type — SQLite has none by default), decoded and compared via `numpy` at query time rather than at the database layer, which is the deliberate cost/complexity tradeoff of skipping a dedicated vector store.
+
+Schema migrations are handled inline via `PRAGMA table_info()` checks + conditional `ALTER TABLE ADD COLUMN` on startup (`_column_exists()` in `backend.py`), rather than a migration framework — appropriate for a single-table-family SQLite app, not appropriate if this schema grows further.
+
+### Retrieval (`rag.py`)
+
+- Chunking: fixed 900-character windows, 150-character overlap, no semantic/sentence-boundary awareness (`chunk_text()`).
+- Embedding: `GoogleGenerativeAIEmbeddings(model="models/text-embedding-004")`, called regardless of the active chat provider — document embeddings always go through Gemini, independent of whether the conversation itself is on Groq/Gemini/OpenRouter.
+- Retrieval: brute-force cosine similarity over all chunks belonging to a session (`rank_chunks()`), top-*k*=4. No ANN index — acceptable at the scale of a single user's uploaded documents, not acceptable past a few thousand chunks per session.
+
+### Routing logic (`router.py`)
+
+Classification is three ordered regex/length checks, first match wins:
+
+1. `CODE_PATTERN` — triple backticks, `function`/`class`/`def`/`error`/`debug`/`exception`/`bug`/`compile`/`stack trace`/`refactor` → routes to `Groq / llama-3.3-70b-versatile`.
+2. `REASONING_PATTERN` (`why`/`explain`/`analyz*`/`compare`/`pros and cons`/`trade-?offs?`/`step by step`/`summar*`) **or** word count > 60 → routes to `Gemini / gemini-2.5-flash`.
+3. Word count ≤ 12 → `Groq / llama-3.1-8b-instant`.
+4. Fallback → `OpenRouter / qwen/qwen3.5-9b`.
+
+This is intentionally a rule-based classifier, not a learned or LLM-based one — zero added latency, zero added cost, fully deterministic and auditable, at the cost of being a coarser signal than an actual complexity-scoring model would provide.
+
+### Cost estimation
+
+Token counts are a `len(text) // 4` heuristic — no tokenizer dependency (`tiktoken`, provider-specific tokenizers) is loaded. This is accurate to within the usual ±15–20% margin for English prose and meaningfully wrong for code-heavy or non-English text. The `COST_TABLE` in `router.py` is a static, manually-maintained `(provider, model) → (usd_per_1M_input, usd_per_1M_output)` dict sourced from provider pricing pages at time of writing — it does not call any pricing API and will drift as providers change rates.
+
 ---
 
-## 🚀 Getting Started
+## 🖥️ Frontend internals
 
-### 1️⃣ Clone the repo
+No build step, no framework, no bundler. Three static HTML entry points share `style.css` (design tokens: CSS custom properties for color/spacing/typography) and load page-specific CSS/JS:
+
+- `index.html` + `landing.css` + `landing.js` — marketing/explainer page, `IntersectionObserver`-driven scroll reveals, CSS-animated SVG connector lines in the hero diagram.
+- `chat.html` + `script.js` — the application. State lives in a single in-memory `state` object (no framework reactivity); DOM updates are direct `innerHTML`/`querySelector` mutations.
+- `analytics.html` + `analytics.css` + `analytics.js` — fetches `/api/analytics/summary` once, renders stat cards and two hand-rolled charts (`div`-based horizontal bars for cost-by-provider, flexbox column bars for daily activity) with no charting library.
+
+### SSE consumption
+
+`EventSource` is not used, because the request requires a JSON POST body (`EventSource` only supports GET). Instead, `fetch()` returns a `ReadableStream`, manually decoded and split on `\n\n` frame boundaries:
+
+```js
+const reader = res.body.getReader();
+const decoder = new TextDecoder();
+let buffer = "";
+while (true) {
+  const { value, done } = await reader.read();
+  if (done) break;
+  buffer += decoder.decode(value, { stream: true });
+  const chunks = buffer.split("\n\n");
+  buffer = chunks.pop();          // last (possibly incomplete) frame stays buffered
+  for (const chunk of chunks) { /* parse `data: {...}` */ }
+}
+```
+
+### Markdown/code rendering
+
+`marked.js` parses response text to HTML on every delta (re-parsed from scratch per token batch, not incrementally — acceptable at typical response lengths, would need diffing at much larger outputs). `highlight.js` runs on each `<pre><code>` block after parse; a `MutationObserver`-free approach is used — code blocks are re-scanned and copy buttons re-attached via `enhanceCodeBlocks()` after every markdown re-render.
+
+---
+
+## 🔌 API reference
+
+| Method | Path | Purpose |
+|---|---|---|
+| `GET` | `/api/models` | Returns `{provider: [model, ...]}` map |
+| `GET` | `/api/sessions` | List sessions, ordered by `updated_at DESC` |
+| `POST` | `/api/sessions` | Create session `{provider, model, system_prompt}` |
+| `GET` | `/api/sessions/{id}` | Session detail + full message history + documents |
+| `PATCH` | `/api/sessions/{id}` | Rename (`{title}`) |
+| `DELETE` | `/api/sessions/{id}` | Cascades to messages, documents, doc_chunks |
+| `POST` | `/api/sessions/{id}/documents` | Multipart file upload → chunk → embed → store |
+| `GET` | `/api/sessions/{id}/documents` | List documents for session |
+| `DELETE` | `/api/sessions/{id}/documents/{doc_id}` | Remove document + its chunks |
+| `POST` | `/api/chat` | Non-streaming chat (single-turn, no persistence — Swagger/testing use) |
+| `POST` | `/api/chat/stream` | SSE streaming chat, full pipeline described above |
+| `GET` | `/api/analytics/summary` | Aggregate totals + provider/model breakdown + 30-day daily series |
+
+SSE event types emitted by `/api/chat/stream`: `title`, `route`, `delta`, `tool_call`, `tool_result`, `usage`, `done`, `error`.
+
+---
+
+## 🚀 Setup
 
 ```bash
 git clone https://github.com/MirAb-77/<repo-name>.git
 cd <repo-name>
-```
-
-### 2️⃣ Set up your environment
-
-<details>
-<summary><b>🔧 Using Pipenv</b></summary>
-
-```bash
-pip install pipenv
-pipenv install
-pipenv shell
-```
-</details>
-
-<details>
-<summary><b>🔧 Using pip + venv</b></summary>
-
-```bash
-python -m venv venv
-source venv/bin/activate   # Windows: venv\Scripts\activate
+python -m venv venv && source venv/bin/activate   # Windows: venv\Scripts\activate
 pip install -r requirements.txt
-```
-</details>
-
-### 3️⃣ Add your API keys
-
-Copy `.env.example` to `.env` and fill in your real keys:
-
-```env
-GROQ_API_KEY=your_groq_key
-GEMINI_API_KEY=your_gemini_key
-TAVILY_API_KEY=your_tavily_key
-OPENROUTER_API_KEY=your_openrouter_key
-```
-
-> `OPENROUTER_API_KEY` is only required if you plan to use the OpenRouter provider.
-
-### 4️⃣ Run the app
-
-```bash
+cp .env.example .env    # fill in GROQ_API_KEY, GEMINI_API_KEY, TAVILY_API_KEY, OPENROUTER_API_KEY
 python backend.py
 ```
 
-That's it — **one process**. Open **http://127.0.0.1:9999** in your browser for the chat website, or **http://127.0.0.1:9999/docs** for the Swagger API docs.
+Single process, single port (`9999`): serves the REST/SSE API, the landing page, the chat app, and the analytics dashboard. `GEMINI_API_KEY` is required even for Groq/OpenRouter-only conversations, since document embedding always calls the Gemini API independently of the active chat provider.
 
----
+### Dependency pinning note
 
-## 🎮 Usage
-
-1. Land on **http://127.0.0.1:9999** — the home page introduces the agent and links to the app
-2. Click **Launch app** to enter the chat UI, or go straight to `/chat.html`
-3. Click **+ New chat**, or just start typing — a session is created automatically
-4. Pick a **provider** and **model** from the top bar
-5. Toggle **Web search** if you want real-time answers
-6. Open **⚙ Agent settings** to set a custom system prompt for that session
-7. Click **📎** to upload a document — the agent can now search it via `search_documents`, visible live in the Reasoning Trace
-8. Flip on **🧭 Auto-route** to let the router pick the provider/model per message instead of choosing manually
-9. Type your message and hit **Enter** (Shift+Enter for a new line)
-10. Switch between past conversations any time via the sidebar
-11. Open **📊 Analytics** in the sidebar to see token/cost/latency stats across every conversation
-
-> **Note:** document embeddings use the Gemini API (`GEMINI_API_KEY`), so uploads work even if your active chat session is set to Groq or OpenRouter — the embedding call is separate from the chat model.
+`langgraph` is pinned exactly (`==1.2.10` in both `requirements.txt` and `Pipfile`) rather than left open — the `create_react_agent()` keyword interface changed between minor versions (`state_modifier` → `prompt`), and an unpinned install silently breaks the agent construction call. `ai_agent.py`'s `_build_agent()` additionally wraps the call in a `try/except TypeError` fallback between the two interfaces as defense in depth.
 
 ---
 
 ## ☁️ Deployment
 
-The app is a single FastAPI process that also serves the static frontend — deploy it anywhere that runs a long-lived Python process (avoid pure serverless/edge functions, since SQLite needs a persistent disk).
-
-### Option A — Docker (any host)
+Any host running a persistent process works; avoid pure serverless/edge runtimes since SQLite requires a writable, persistent filesystem path (`DB_PATH` env var, defaults to `./chat_history.db`).
 
 ```bash
+# Docker
 docker build -t agent-chatbot .
-docker run -d \
-  -p 9999:9999 \
-  --env-file .env \
-  -v agent_data:/app/data \
-  --name agent-chatbot \
-  agent-chatbot
+docker run -d -p 9999:9999 --env-file .env -v agent_data:/app/data --name agent-chatbot agent-chatbot
 ```
 
-The `-v agent_data:/app/data` volume is what keeps `chat_history.db` across container restarts — without it, every redeploy wipes your chat history.
+Render/Railway: connect the repo, set the four provider env vars, attach a persistent volume at `/app/data`, set `DB_PATH=/app/data/chat_history.db`. Without the volume, ephemeral-filesystem platforms wipe chat history on every restart/redeploy.
 
-### Option B — Render.com (simplest managed option)
-
-1. Push this repo to GitHub
-2. On Render: **New → Web Service** → connect the repo
-3. **Build command:** `pip install -r requirements.txt`
-4. **Start command:** `uvicorn backend:app --host 0.0.0.0 --port $PORT`
-5. Add your `GROQ_API_KEY`, `GEMINI_API_KEY`, `TAVILY_API_KEY`, `OPENROUTER_API_KEY` under **Environment**
-6. Add a **Persistent Disk** (e.g. 1GB, mounted at `/app/data`), and set env var `DB_PATH=/app/data/chat_history.db` — otherwise the free tier's ephemeral filesystem will erase chat history on every restart/deploy
-
-### Option C — Railway
-
-Same idea as Render: connect the repo, set the same env vars, add a **Volume** mounted at `/app/data`, set `DB_PATH=/app/data/chat_history.db`, and Railway auto-detects the start command from the Dockerfile.
-
-### Option D — A plain VPS (DigitalOcean, Hetzner, etc.)
-
-```bash
-git clone <your-repo> && cd <your-repo>
-python3 -m venv venv && source venv/bin/activate
-pip install -r requirements.txt
-cp .env.example .env   # fill in real keys
-# run behind a process manager so it survives reboots/crashes:
-pip install gunicorn
-gunicorn backend:app -w 1 -k uvicorn.workers.UvicornWorker -b 0.0.0.0:9999
-```
-
-Put **Caddy** or **nginx** in front for HTTPS and a real domain — Caddy is the least setup (`caddy reverse-proxy --from yourdomain.com --to localhost:9999` handles TLS automatically).
-
-### Production notes
-
-- **CORS is wide open** (`allow_origins=["*"]`) in `backend.py` — fine for personal use, but lock it down to your actual domain before sharing the link publicly
-- **No auth** — anyone with the URL can create sessions and burn your API credits. Add a simple API key check or basic auth in front if you're deploying somewhere public
-- **Rate limits** — Groq/Gemini/OpenRouter free tiers all cap requests; monitor usage if this gets real traffic
-- **Cost/token figures are estimates** — computed from a ~4-chars-per-token heuristic and a static pricing table in `router.py`, not each provider's actual usage metering. Good for relative comparisons, not for billing reconciliation
-- Keep `.env` out of git — it's already covered by `.dockerignore`, add it to `.gitignore` too if you haven't
+**Known gaps before public deployment:** `CORS` is `allow_origins=["*"]`; there is no authentication on any endpoint; there is no rate limiting. Fine for local/personal use, not fine for an unauthenticated public URL.
 
 ---
 
-## 🛣️ Roadmap
+## 🧭 Design tradeoffs (explicit)
 
-- [ ] Rename sessions from the UI
-- [x] File upload + RAG (done — see "What makes this different")
-- [x] Smart model routing (done — see "What makes this different")
-- [x] Usage analytics dashboard (done — see "What makes this different")
-- [ ] Image upload / vision support
-- [ ] Auth & multi-user support
-- [ ] Rate limiting on the API
-- [ ] Export a conversation as Markdown/PDF
+- **No vector database.** Embeddings are stored as JSON text in SQLite and compared with brute-force `numpy` cosine similarity. Correct choice at single-user, single-session scale; wrong choice past a few thousand chunks or multi-tenant concurrent load.
+- **No token-accurate cost accounting.** Character-count heuristic, not a real tokenizer. Directionally useful, not billing-accurate — stated explicitly in the analytics UI itself.
+- **Rule-based router, not a learned one.** Deterministic and free, but a fixed set of regex patterns will misclassify anything outside the patterns it was written to catch.
+- **JSON columns instead of normalized trace/usage tables.** Simpler queries, no joins needed for the one access pattern that exists (render-by-message-id); would need revisiting if trace data needed independent querying/filtering.
+- **No conversation-level model pinning under auto-route.** Each auto-routed message is classified independently; a session can bounce between providers turn to turn, which is intentional (cost/latency optimized per-message) but means model identity isn't stable within one conversation the way manual selection guarantees.
 
 ---
 
-## 📜 License
+## 📄 License
 
-Distributed under the MIT License.
+MIT.
 
 ---
 
-<div align="center">
-
-Made with ❤️ by [**Abdullah Imran**](https://github.com/MirAb-77)
-
-</div>
+Built by [Abdullah Imran](https://github.com/MirAb-77)
