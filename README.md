@@ -65,7 +65,7 @@ A **multi-provider, tool-using LangGraph agent** wrapped in a FastAPI backend an
 <p align="center"><sub>⌨️ Active session — usage footer per message</sub></p>
 </td>
 <td width="50%">
-<img alt="Screenshot 2026-08-01 111915" src="https://github.com/user-attachments/assets/8e166838-1e9b-4a0c-a172-a412ab242498" width="100%">
+<img alt="Screenshot 2026-08-01 111915" src="https://github.com/user-attachments/assets/8e166838-1e9b-4a0c-a172-a412ab242498"/>
 <p align="center"><sub>📊 Analytics — cost, tokens & latency, charted</sub></p>
 </td>
 </tr>
