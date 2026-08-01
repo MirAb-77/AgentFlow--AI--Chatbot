@@ -1,11 +1,11 @@
 <div align="center">
 
-<img width="1720" height="1452" alt="Screenshot 2026-08-01 111231" src="https://github.com/user-attachments/assets/547756ca-95f8-44f9-8796-e2148319483e" />
+<img width="500" height="500" alt="Screenshot 2026-08-01 111231" src="https://github.com/user-attachments/assets/547756ca-95f8-44f9-8796-e2148319483e" />
 
 
 <br><br>
 
-# 🤖⚡ Personal Agentic AI Chatbot
+# 🤖⚡AgentFlow - Agentic AI Chatbot
 
 ### One interface. Three model engines. Full agent transparency.
 
@@ -48,10 +48,13 @@ A **multi-provider, tool-using LangGraph agent** wrapped in a FastAPI backend an
 
 ## 📸 Gallery
 
+<img width="1718" height="1474" alt="Screenshot 2026-08-01 111244" src="https://github.com/user-attachments/assets/ddfb6b5b-8db5-4d37-b2e0-2212a28527f3" />
+
 <table>
 <tr>
 <td width="50%">
-<img src="docs/screenshots/landing-features.png" width="100%">
+<img src="![Uploading Screenshot 2026-08-01 111244.png…]()
+docs/screenshots/landing-features.png" width="100%">
 <p align="center"><sub>🏠 Landing — process breakdown & capability grid</sub></p>
 </td>
 <td width="50%">
