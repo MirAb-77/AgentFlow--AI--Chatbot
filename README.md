@@ -1,6 +1,7 @@
 <div align="center">
 
-<img src="docs/screenshots/landing-hero.png" width="100%" alt="Agent — landing page hero">
+<img width="1720" height="1452" alt="Screenshot 2026-08-01 111231" src="https://github.com/user-attachments/assets/547756ca-95f8-44f9-8796-e2148319483e" />
+
 
 <br><br>
 
