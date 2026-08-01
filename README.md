@@ -1,6 +1,6 @@
 <div align="center">
 
-<img width="1000" height="300" alt="Screenshot 2026-08-01 111231" src="https://github.com/user-attachments/assets/547756ca-95f8-44f9-8796-e2148319483e" />
+<img width="600" height="600" alt="Screenshot 2026-08-01 111231" src="https://github.com/user-attachments/assets/547756ca-95f8-44f9-8796-e2148319483e" />
 
 
 <br><br>
@@ -55,17 +55,17 @@ A **multi-provider, tool-using LangGraph agent** wrapped in a FastAPI backend an
 <p align="center"><sub>🏠 Landing — process breakdown & capability grid</sub></p>
 </td>
 <td width="50%">
-<img src="docs/screenshots/chat-empty.png" width="100%">
+<img alt="Screenshot 2026-08-01 111305" src="https://github.com/user-attachments/assets/8dd808ed-38f9-48ef-9e47-bc2b9a41bedd" />
 <p align="center"><sub>💬 Chat — provider select, web search, auto-route</sub></p>
 </td>
 </tr>
 <tr>
 <td width="50%">
-<img src="docs/screenshots/chat-conversation.png" width="100%">
+<img alt="Screenshot 2026-08-01 111728" src="https://github.com/user-attachments/assets/b8234370-9d5b-48d8-972d-69a83c9dba00" />
 <p align="center"><sub>⌨️ Active session — usage footer per message</sub></p>
 </td>
 <td width="50%">
-<img src="docs/screenshots/analytics-dashboard.png" width="100%">
+<img alt="Screenshot 2026-08-01 111915" src="https://github.com/user-attachments/assets/8e166838-1e9b-4a0c-a172-a412ab242498" width="100%">
 <p align="center"><sub>📊 Analytics — cost, tokens & latency, charted</sub></p>
 </td>
 </tr>
