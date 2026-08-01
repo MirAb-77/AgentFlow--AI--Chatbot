@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Agent — One interface, three model engines</title>
+<meta name="description" content="A multi-provider agentic chatbot with real memory, live web search, and streaming responses. Groq, Gemini, and OpenRouter behind one agent.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="landing.css">
+</head>
+<body class="landing-body">
+
+<!-- ============ NAV ============ -->
+<nav class="l-nav">
+  <div class="l-nav-inner">
+    <a href="/" class="brand-link">
+      <span class="brand-mark">◆</span>
+      <span class="brand-name">Agent</span>
+    </a>
+    <div class="l-nav-links">
+      <a href="https://github.com/MirAb-77" target="_blank" rel="noopener">GitHub</a>
+      <a href="/chat.html" class="l-nav-cta">Launch app →</a>
+    </div>
+  </div>
+</nav>
+
+<!-- ============ HERO ============ -->
+<header class="l-hero">
+  <div class="l-hero-inner reveal">
+    <div class="l-eyebrow">MULTI-PROVIDER · AGENTIC · OPEN SOURCE</div>
+    <h1 class="l-headline">One interface.<br>Three model engines.</h1>
+    <p class="l-sub">
+      A LangGraph ReAct agent that thinks with Groq, Gemini, or OpenRouter —
+      remembers the conversation, searches the live web when it needs to,
+      and streams every answer back in real time.
+    </p>
+    <div class="l-cta-row">
+      <a href="/chat.html" class="btn-hero-primary">Start chatting</a>
+      <a href="#how" class="btn-hero-secondary">See how it works</a>
+    </div>
+  </div>
+
+  <!-- Signature diagram: providers converging into the agent -->
+  <div class="l-diagram reveal" aria-hidden="true">
+    <div class="l-diagram-inner">
+      <div class="l-node l-node-provider" style="--pc:#F97316; --delay:0s">
+        <span class="l-node-dot"></span>Groq
+      </div>
+      <div class="l-node l-node-provider" style="--pc:#60A5FA; --delay:0.3s">
+        <span class="l-node-dot"></span>Gemini
+      </div>
+      <div class="l-node l-node-provider" style="--pc:#C084FC; --delay:0.6s">
+        <span class="l-node-dot"></span>OpenRouter
+      </div>
+
+      <svg class="l-lines" viewBox="0 0 600 220" preserveAspectRatio="none">
+        <path class="l-line" d="M 90 40 C 250 40, 300 110, 300 110" style="--delay:0s" />
+        <path class="l-line" d="M 90 110 C 250 110, 300 110, 300 110" style="--delay:0.3s" />
+        <path class="l-line" d="M 90 180 C 250 180, 300 110, 300 110" style="--delay:0.6s" />
+      </svg>
+
+      <div class="l-node l-node-agent">
+        <span class="l-agent-mark">◆</span>
+        <span>Agent</span>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- ============ HOW IT WORKS ============ -->
+<section class="l-section" id="how">
+  <div class="l-section-inner">
+    <div class="l-eyebrow reveal">HOW IT WORKS</div>
+    <h2 class="l-h2 reveal">Reason, act, respond.</h2>
+
+    <div class="l-steps">
+      <div class="l-step reveal">
+        <div class="l-step-num">01</div>
+        <h3>Pick an engine</h3>
+        <p>Choose Groq, Gemini, or any model behind OpenRouter — swap providers mid-conversation without losing context.</p>
+      </div>
+      <div class="l-step reveal">
+        <div class="l-step-num">02</div>
+        <h3>Agent reasons</h3>
+        <p>A LangGraph ReAct loop decides whether it needs to search the live web via Tavily before answering.</p>
+      </div>
+      <div class="l-step reveal">
+        <div class="l-step-num">03</div>
+        <h3>Streams back</h3>
+        <p>Tokens arrive live over SSE, rendered as markdown with syntax-highlighted, copyable code blocks.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ FEATURES ============ -->
+<section class="l-section l-section-alt">
+  <div class="l-section-inner">
+    <div class="l-eyebrow reveal">CAPABILITIES</div>
+    <h2 class="l-h2 reveal">Built for real conversations, not demos.</h2>
+
+    <div class="l-feature-grid">
+      <div class="l-feature reveal">
+        <div class="l-feature-icon">◆</div>
+        <h3>Real memory</h3>
+        <p>Full chat history is sent to the agent every turn — it remembers what you said three messages ago.</p>
+      </div>
+      <div class="l-feature reveal">
+        <div class="l-feature-icon">▤</div>
+        <h3>Persistent sessions</h3>
+        <p>Every conversation is saved server-side in SQLite. Close the tab, come back tomorrow — it's still there.</p>
+      </div>
+      <div class="l-feature reveal">
+        <div class="l-feature-icon">◐</div>
+        <h3>Live web search</h3>
+        <p>Toggle Tavily search on for any message when the model needs current information.</p>
+      </div>
+      <div class="l-feature reveal">
+        <div class="l-feature-icon">▍</div>
+        <h3>Token streaming</h3>
+        <p>No spinners — answers appear word by word as the model generates them.</p>
+      </div>
+      <div class="l-feature reveal">
+        <div class="l-feature-icon">◈</div>
+        <h3>Custom personas</h3>
+        <p>Set a system prompt per session to reshape how the agent behaves, no code changes needed.</p>
+      </div>
+      <div class="l-feature reveal">
+        <div class="l-feature-icon">⌘</div>
+        <h3>Markdown &amp; code</h3>
+        <p>Responses render as proper markdown with syntax-highlighted code blocks and one-click copy.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ TECH STRIP ============ -->
+<section class="l-tech-strip reveal">
+  <div class="l-tech-strip-inner">
+    <span>LangGraph</span><span>·</span>
+    <span>FastAPI</span><span>·</span>
+    <span>SQLite</span><span>·</span>
+    <span>Groq</span><span>·</span>
+    <span>Gemini</span><span>·</span>
+    <span>OpenRouter</span><span>·</span>
+    <span>Tavily</span>
+  </div>
+</section>
+
+<!-- ============ CTA FOOTER ============ -->
+<section class="l-final-cta reveal">
+  <h2 class="l-h2">Ready to talk to your agent?</h2>
+  <a href="/chat.html" class="btn-hero-primary">Launch the app →</a>
+</section>
+
+<footer class="l-footer">
+  <div class="l-footer-inner">
+    <span>Built by <a href="https://github.com/MirAb-77" target="_blank" rel="noopener">Abdullah Imran</a></span>
+    <span class="l-footer-sep">·</span>
+    <a href="https://github.com/MirAb-77" target="_blank" rel="noopener">GitHub</a>
+  </div>
+</footer>
+
+<script src="landing.js"></script>
+</body>
+</html>

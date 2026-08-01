@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chat — Agent</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/base16/tomorrow-night.min.css">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="app">
+
+  <!-- ============ SIDEBAR ============ -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-top">
+      <div class="brand">
+        <a href="/" class="brand-link" title="Back to home">
+          <span class="brand-mark">◆</span>
+          <span class="brand-name">Agent</span>
+        </a>
+      </div>
+      <button class="icon-btn" id="collapseBtn" title="Collapse sidebar">‹</button>
+    </div>
+
+    <button class="new-chat-btn" id="newChatBtn">
+      <span class="plus">+</span> New chat
+    </button>
+
+    <div class="sessions-label">Recent</div>
+    <div class="sessions-list" id="sessionsList">
+      <!-- sessions injected here -->
+    </div>
+
+    <div class="sidebar-bottom">
+      <a href="/analytics.html" class="settings-btn" style="display:block; text-align:left; text-decoration:none; margin-bottom:6px;">📊 Analytics</a>
+      <button class="settings-btn" id="settingsBtn">⚙ Agent settings</button>
+    </div>
+  </aside>
+
+  <!-- ============ MAIN ============ -->
+  <main class="main">
+
+    <header class="topbar">
+      <button class="icon-btn mobile-only" id="expandBtn" title="Expand sidebar">☰</button>
+      <div class="topbar-title" id="sessionTitle">New chat</div>
+
+      <div class="topbar-controls">
+        <div class="select-wrap" id="providerSelectWrap">
+          <span class="provider-dot" id="providerDot"></span>
+          <select id="providerSelect"></select>
+        </div>
+        <div class="select-wrap" id="modelSelectWrap">
+          <select id="modelSelect"></select>
+        </div>
+        <label class="search-toggle" id="searchToggle" title="Allow the agent to search the web">
+          <input type="checkbox" id="searchCheckbox">
+          <span class="toggle-track"><span class="toggle-thumb"></span></span>
+          <span class="toggle-label">Web search</span>
+        </label>
+        <label class="search-toggle" id="routeToggle" title="Let the router auto-pick the best model per message">
+          <input type="checkbox" id="autoRouteCheckbox">
+          <span class="toggle-track"><span class="toggle-thumb"></span></span>
+          <span class="toggle-label">🧭 Auto-route</span>
+        </label>
+        <button class="docs-btn" id="docsBtn" title="Uploaded documents">
+          📎 <span id="docsCount">0</span>
+        </button>
+      </div>
+    </header>
+
+    <div class="chat-scroll" id="chatScroll">
+      <div class="empty-state" id="emptyState">
+        <div class="empty-mark">◆</div>
+        <h1>What are we building today?</h1>
+        <p>Pick a provider, optionally flip on web search, and start typing.</p>
+        <div class="suggestion-grid">
+          <button class="suggestion" data-text="Explain how a LangGraph ReAct agent decides when to call a tool.">Explain how a ReAct agent decides to use tools</button>
+          <button class="suggestion" data-text="Write a Python function that retries a failing API call with exponential backoff.">Write a retry function with backoff</button>
+          <button class="suggestion" data-text="What's the latest news in AI this week?">What's the latest news in AI this week?</button>
+          <button class="suggestion" data-text="Give me 5 project ideas to practice LangGraph agents.">Give me project ideas using LangGraph</button>
+        </div>
+      </div>
+      <div class="messages" id="messages"></div>
+    </div>
+
+    <div class="composer-wrap">
+      <div class="composer">
+        <button class="attach-btn" id="attachBtn" title="Attach a document">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a5 5 0 01-7.07-7.07l9.19-9.19a3 3 0 014.24 4.24l-9.19 9.19a1 1 0 01-1.41-1.41l8.48-8.48"/></svg>
+        </button>
+        <input type="file" id="fileInput" hidden accept=".pdf,.txt,.md,.csv,.json,.py,.js,.ts,.html,.css">
+        <textarea id="userInput" placeholder="Message the agent…" rows="1"></textarea>
+        <button class="send-btn" id="sendBtn" title="Send">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M4 12L20 4L13 20L11 13L4 12Z" fill="currentColor"/></svg>
+        </button>
+      </div>
+      <div class="composer-hint">Enter to send · Shift+Enter for a new line · 📎 attach a file to chat with it</div>
+    </div>
+
+  </main>
+</div>
+
+<!-- ============ SETTINGS MODAL ============ -->
+<div class="modal-overlay" id="settingsOverlay">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>Agent settings</h2>
+      <button class="icon-btn" id="closeSettings">✕</button>
+    </div>
+    <label class="modal-label">System prompt</label>
+    <textarea id="systemPromptInput" rows="5" placeholder="You are a smart, helpful and friendly AI assistant…"></textarea>
+    <div class="modal-hint">Applies to this chat session. Leave blank to use the default persona.</div>
+    <div class="modal-actions">
+      <button class="btn-secondary" id="cancelSettings">Cancel</button>
+      <button class="btn-primary" id="saveSettings">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ DOCUMENTS MODAL ============ -->
+<div class="modal-overlay" id="docsOverlay">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>Documents</h2>
+      <button class="icon-btn" id="closeDocs">✕</button>
+    </div>
+    <div class="modal-hint" style="margin-bottom:12px;">
+      Upload files and the agent can search them via the <code>search_documents</code> tool — watch it happen live in the reasoning trace.
+    </div>
+    <button class="new-chat-btn" id="uploadTriggerBtn" style="width:100%; justify-content:center; margin:0 0 14px;">
+      <span class="plus">+</span> Upload a file
+    </button>
+    <div class="docs-list" id="docsList">
+      <div class="docs-empty" id="docsEmpty">No documents uploaded to this chat yet.</div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-secondary" id="closeDocsBtn">Close</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script src="script.js"></script>
+</body>
+</html>
